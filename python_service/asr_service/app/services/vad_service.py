@@ -41,23 +41,14 @@ class VADService:
 
         os.makedirs(self.output_dir, exist_ok=True)
 
-        # 最小修复：串行化整个 VAD 流程，避免多线程并发触发底层库崩溃
+        # 串行化整个 VAD 流程，避免多线程并发触发底层库崩溃
         self._lock = threading.Lock()
         self.model = load_silero_vad()
 
     def split_audio(self, file_path: str, task_id: int) -> List[AudioSegment]:
         """
         输入原始音频，输出切片后的 segment 列表。
-
-        规则：
-        1. VAD 只负责找语音时间戳
-        2. 不删除静音，最终切片是原音频上的连续时间块
-        3. 先按时间戳聚合，尽量让每段 >= target_segment_duration_sec
-        4. 如果连续时间块过长，再按 max_segment_duration_sec 切开
-        5. 除最后一个片段外，尽量不小于 target_segment_duration_sec
-
-        注意：
-        - 这里通过实例级锁串行化 VAD，避免两个 worker 并发执行时崩溃
+        这里通过实例级锁串行化 VAD，避免两个 worker 并发执行时崩溃
         """
         with self._lock:
             wav = read_audio(file_path, sampling_rate=self.sample_rate)
@@ -113,11 +104,6 @@ class VADService:
     def _aggregate_segments(self, speech_timestamps: list[dict]) -> list[dict]:
         """
         基于 VAD 的时间戳做连续时间窗口聚合。
-
-        注意：
-        - 不删除静音
-        - 只用时间戳决定连续裁切区间的起止
-        - 除最后一个片段外，尽量保证长度 >= target_segment_duration_sec
         """
         if not speech_timestamps:
             return []

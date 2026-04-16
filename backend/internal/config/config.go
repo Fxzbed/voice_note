@@ -27,7 +27,7 @@ func LoadConfig() *Config {
 		AppPort:          getEnv("APP_PORT", "8080"),
 		PythonServiceURL: getEnv("PYTHON_SERVICE_URL", "http://127.0.0.1:8000"),
 		GinMode:          getEnv("GIN_MODE", "debug"),
-		JWTSecret:        getEnv("JWT_SECRET", "your_secret_key"),
+		JWTSecret:        getEnv("JWT_SECRET", "secret_key"),
 		DBHost:           getEnv("DB_HOST", "127.0.0.1"),
 		DBPort:           getEnv("DB_PORT", "3306"),
 		DBUser:           getEnv("DB_USER", "appuser"),

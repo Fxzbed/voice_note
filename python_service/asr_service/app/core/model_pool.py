@@ -38,7 +38,7 @@ class ModelPool:
                 "instance_count": instance_count,
             }
 
-    def acquire(self, alias: str, timeout: float | None = None) -> ModelEntry:
+    def acquire(self, alias: str, timeout: float | None = None) -> ModelEntry | None:
         start_time = time.time()
 
         while True:
