@@ -48,10 +48,12 @@ func (h *UploadHandler) UploadAudio(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "upload success",
-		"task_id":   task.ID,
-		"status":    task.Status,
-		"file_name": task.OriginalName,
+		"message":     "upload success",
+		"task_id":     task.ID,
+		"status":      task.Status,
+		"file_name":   task.OriginalName,
+		"file_path":   task.FilePath,
+		"stored_name": task.StoredName,
 	})
 }
 

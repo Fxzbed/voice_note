@@ -29,12 +29,21 @@ func (s *UploadService) EnsureUploadDir() error {
 	return os.MkdirAll(s.UploadDir, 0755)
 }
 
-func (s *UploadService) SaveUploadedFile(userID uint, fileHeader *multipart.FileHeader, saveFunc func(dst string) error) (*model.UploadTask, error) {
+func (s *UploadService) SaveUploadedFile(
+	userID uint,
+	fileHeader *multipart.FileHeader,
+	saveFunc func(dst string) error,
+) (*model.UploadTask, error) {
 	ext := filepath.Ext(fileHeader.Filename)
 	storedName := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.NewString(), ext)
-	filePath := filepath.Join(s.UploadDir, storedName)
 
-	if err := saveFunc(filePath); err != nil {
+	relativePath := filepath.Join(s.UploadDir, storedName)
+	absolutePath, err := filepath.Abs(relativePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := saveFunc(absolutePath); err != nil {
 		return nil, err
 	}
 
@@ -42,7 +51,7 @@ func (s *UploadService) SaveUploadedFile(userID uint, fileHeader *multipart.File
 		UserID:       userID,
 		OriginalName: fileHeader.Filename,
 		StoredName:   storedName,
-		FilePath:     filePath,
+		FilePath:     absolutePath,
 		FileSize:     fileHeader.Size,
 		Status:       model.TaskStatusUploaded,
 	}
