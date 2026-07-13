@@ -12,6 +12,8 @@ func SetupRouter(
 	healthHandler *handler.HealthHandler,
 	uploadHandler *handler.UploadHandler,
 	pythonTaskHandler *handler.PythonTaskHandler,
+	ossHandler *handler.OSSHandler,
+	noteResultHandler *handler.NoteResultHandler,
 	jwtSecret string,
 ) *gin.Engine {
 	r := gin.Default()
@@ -31,9 +33,14 @@ func SetupRouter(
 				c.JSON(200, gin.H{"message": "you are logged in"})
 			})
 
-			protected.POST("/upload", uploadHandler.UploadAudio)
+			// protected.POST("/upload", uploadHandler.UploadAudio)
 			protected.GET("/tasks", uploadHandler.ListMyTasks)
 			protected.GET("/tasks/:id", uploadHandler.GetTaskStatus)
+
+			protected.GET("/notes/:task_id", noteResultHandler.GetByTaskID)
+			protected.POST("/oss/sts", ossHandler.GetSTS)
+			protected.POST("/upload/complete", ossHandler.CompleteUpload)
+			protected.DELETE("/tasks/:id", uploadHandler.DeleteTask)
 
 			protected.POST("/python/tasks", pythonTaskHandler.CreateTask)
 			protected.GET("/python/tasks/:id", pythonTaskHandler.GetTask)

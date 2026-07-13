@@ -24,6 +24,7 @@ func main() {
 	if err := db.AutoMigrate(
 		&model.User{},
 		&model.UploadTask{},
+		&model.NoteResult{},
 	); err != nil {
 		log.Fatalf("auto migrate failed: %v", err)
 	}
@@ -39,22 +40,44 @@ func main() {
 	authHandler := handler.NewAuthHandler(authService)
 
 	uploadTaskRepo := repository.NewUploadTaskRepository(db)
-	uploadService := service.NewUploadService(uploadTaskRepo, "./uploads")
+
+	ossService := service.NewOSSService(
+		cfg.OSSRegion,
+		cfg.OSSBucket,
+		cfg.OSSEndpoint,
+		cfg.OSSBaseURL,
+		cfg.AliyunAccessKeyID,
+		cfg.AliyunAccessKeySecret,
+		cfg.OSSSTSRoleArn,
+		cfg.OSSSTSDurationSeconds,
+	)
+	uploadService := service.NewUploadService(uploadTaskRepo, "./uploads", ossService)
 	if err := uploadService.EnsureUploadDir(); err != nil {
 		log.Fatalf("create upload dir failed: %v", err)
 	}
+
 	uploadHandler := handler.NewUploadHandler(uploadService)
+	// noteHandler := handler.NewNoteHandler(db, uploadService)
+	noteResultRepo := repository.NewNoteResultRepository(db)
+	noteResultService := service.NewNoteResultService(noteResultRepo)
 
 	pythonTaskHandler := handler.NewPythonTaskHandler(
 		pythonService,
 		uploadService,
+		noteResultService,
 	)
+
+	ossHandler := handler.NewOSSHandler(ossService, uploadService)
+
+	noteResultHandler := handler.NewNoteResultHandler(noteResultService, uploadService)
 
 	r := router.SetupRouter(
 		authHandler,
 		healthHandler,
 		uploadHandler,
 		pythonTaskHandler,
+		ossHandler,
+		noteResultHandler,
 		cfg.JWTSecret,
 	)
 

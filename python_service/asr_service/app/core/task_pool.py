@@ -9,6 +9,10 @@ from typing import Optional
 
 TASK_PENDING = "pending"
 
+TASK_DOWNLOAD_PROCESSING = "download_processing"
+TASK_DOWNLOAD_DONE = "download_done"
+TASK_DOWNLOAD_FAILED = "download_failed"
+
 TASK_VAD_PROCESSING = "vad_processing"
 TASK_VAD_DONE = "vad_done"
 TASK_VAD_FAILED = "vad_failed"
@@ -25,8 +29,11 @@ TASK_NOTE_FAILED = "note_failed"
 @dataclass
 class Task:
     task_id: int
-    file_path: str
+    original_name: str
+    oss_object_key: str
     language: str | None = None
+
+    local_file_path: str | None = None
 
     status: str = TASK_PENDING
     error_message: str | None = None
@@ -37,8 +44,8 @@ class Task:
     result_text: str | None = None
     result_text_file: str | None = None
 
-    note_markdown: str | None = None
-    note_markdown_file: str | None = None
+    structured_note_json: dict | None = None
+    structured_note_file: str | None = None
 
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
@@ -48,14 +55,14 @@ class TaskPool:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._pending_queue: queue.Queue[int] = queue.Queue()
-
         self._tasks: dict[int, Task] = {}
         self._running_task_ids: set[int] = set()
 
     def create_task(
         self,
         task_id: int,
-        file_path: str,
+        original_name: str,
+        oss_object_key: str,
         language: str | None = None,
     ) -> Task:
         with self._lock:
@@ -64,7 +71,8 @@ class TaskPool:
 
             task = Task(
                 task_id=task_id,
-                file_path=file_path,
+                original_name=original_name,
+                oss_object_key=oss_object_key,
                 language=language,
             )
             self._tasks[task.task_id] = task
@@ -106,22 +114,23 @@ class TaskPool:
             task = self._tasks.get(task_id)
             if task is None:
                 raise ValueError(f"task not found: {task_id}")
-
             task.status = status
             task.error_message = error_message
             task.updated_at = time.time()
 
-    def set_vad_result(
-        self,
-        task_id: int,
-        segment_dir: str,
-        segment_count: int,
-    ) -> None:
+    def set_local_file_path(self, task_id: int, local_file_path: str) -> None:
         with self._lock:
             task = self._tasks.get(task_id)
             if task is None:
                 raise ValueError(f"task not found: {task_id}")
+            task.local_file_path = local_file_path
+            task.updated_at = time.time()
 
+    def set_vad_result(self, task_id: int, segment_dir: str, segment_count: int) -> None:
+        with self._lock:
+            task = self._tasks.get(task_id)
+            if task is None:
+                raise ValueError(f"task not found: {task_id}")
             task.segment_dir = segment_dir
             task.segment_count = segment_count
             task.updated_at = time.time()
@@ -131,7 +140,6 @@ class TaskPool:
             task = self._tasks.get(task_id)
             if task is None:
                 raise ValueError(f"task not found: {task_id}")
-
             task.result_text = text
             task.updated_at = time.time()
 
@@ -140,26 +148,23 @@ class TaskPool:
             task = self._tasks.get(task_id)
             if task is None:
                 raise ValueError(f"task not found: {task_id}")
-
             task.result_text_file = file_path
             task.updated_at = time.time()
 
-    def set_note_result(self, task_id: int, markdown: str) -> None:
+    def set_structured_note_result(self, task_id: int, data: dict) -> None:
         with self._lock:
             task = self._tasks.get(task_id)
             if task is None:
                 raise ValueError(f"task not found: {task_id}")
-
-            task.note_markdown = markdown
+            task.structured_note_json = data
             task.updated_at = time.time()
 
-    def set_note_result_file(self, task_id: int, file_path: str) -> None:
+    def set_structured_note_file(self, task_id: int, file_path: str) -> None:
         with self._lock:
             task = self._tasks.get(task_id)
             if task is None:
                 raise ValueError(f"task not found: {task_id}")
-
-            task.note_markdown_file = file_path
+            task.structured_note_file = file_path
             task.updated_at = time.time()
 
     def get_queue_size(self) -> int:
@@ -168,6 +173,3 @@ class TaskPool:
     def get_running_task_ids(self) -> list[int]:
         with self._lock:
             return list(self._running_task_ids)
-
-    def wait_all_done(self) -> None:
-        self._pending_queue.join()

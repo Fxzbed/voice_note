@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	"voice-note-app/internal/model"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -24,5 +26,16 @@ func InitDB(cfg *Config) *gorm.DB {
 	}
 
 	log.Println("database connected")
+
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.UploadTask{},
+		&model.NoteResult{},
+	); err != nil {
+		log.Fatal("database migrate failed: ", err)
+	}
+
+	log.Println("database migrated")
+
 	return db
 }

@@ -1,18 +1,47 @@
-import { createRouter, createWebHistory } from "vue-router";
-import LoginView from "../views/LoginView.vue";
-import UploadView from "../views/UploadView.vue";
-import TaskListView from "../views/TaskListView.vue";
-import TaskDetailView from "../views/TaskDetailView.vue";
+import { createRouter, createWebHistory } from 'vue-router'
+import HomePage from '../views/HomePage.vue'
+import LoginPage from '../views/LoginPage.vue'
+import DashboardPage from '../views/DashboardPage.vue'
+import NotesViewer from '../views/NotesViewer.vue'
+import RegisterPage from '@/views/RegisterPage.vue'
+import OssTest from '@/views/OssTest.vue'
+
+const routes = [
+  {
+    path: '/',
+    name: 'Home',
+    component: HomePage
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: LoginPage
+  },
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: DashboardPage
+  },
+  {
+    path: '/notes',
+    name: 'Notes',
+    component: NotesViewer
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: RegisterPage
+  },
+  {
+    path: '/test',
+    name: 'osstest',
+    component: OssTest
+  }
+]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [
-    { path: "/", redirect: "/login" },
-    { path: "/login", component: LoginView },
-    { path: "/upload", component: UploadView },
-    { path: "/tasks", component: TaskListView },
-    { path: "/tasks/:id", component: TaskDetailView },
-  ],
-});
+  routes
+})
 
-export default router;
+export default router

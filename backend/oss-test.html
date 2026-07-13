@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OSS 直传演示</title>
+  <script src="https://gosspublic.alicdn.com/aliyun-oss-sdk-6.22.0.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f6f8fb;
+      color: #1f2937;
+      margin: 0;
+      padding: 24px;
+    }
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    .field {
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+    input, button, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .row > * {
+      flex: 1;
+      min-width: 220px;
+    }
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .secondary {
+      background: #64748b;
+    }
+    .secondary:hover {
+      background: #475569;
+    }
+    .success {
+      background: #059669;
+    }
+    .success:hover {
+      background: #047857;
+    }
+    .muted {
+      color: #6b7280;
+      font-size: 13px;
+    }
+    .status {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>OSS 直传音频演示页</h1>
+    <p class="muted">流程：登录 → 申请 STS → 直传 OSS → 通知 Gin 落库创建任务。</p>
+
+    <div class="card">
+      <h2>1. Gin 基础信息</h2>
+      <div class="field">
+        <label for="baseUrl">Gin API Base URL</label>
+        <input id="baseUrl" value="http://localhost:8080/api" />
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2. 登录</h2>
+      <div class="row">
+        <div class="field">
+          <label for="username">用户名</label>
+          <input id="username" placeholder="请输入用户名" />
+        </div>
+        <div class="field">
+          <label for="password">密码</label>
+          <input id="password" type="password" placeholder="请输入密码" />
+        </div>
+      </div>
+      <div class="row">
+        <button id="loginBtn">登录</button>
+        <button id="clearTokenBtn" class="secondary">清除 Token</button>
+      </div>
+      <div class="status" id="tokenStatus">未登录</div>
+      <div class="field" style="margin-top: 14px;">
+        <label for="loginResult">登录响应</label>
+        <textarea id="loginResult" readonly></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. 选择音频并直传 OSS</h2>
+      <div class="field">
+        <label for="audioFile">选择音频文件</label>
+        <input id="audioFile" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac" />
+      </div>
+      <div class="row">
+        <button id="uploadBtn" class="success">开始上传到 OSS</button>
+      </div>
+      <div class="field" style="margin-top: 14px;">
+        <label for="stsResult">STS 返回结果</label>
+        <textarea id="stsResult" readonly></textarea>
+      </div>
+      <div class="field">
+        <label for="uploadResult">上传与落库结果</label>
+        <textarea id="uploadResult" readonly></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const baseUrlEl = document.getElementById("baseUrl");
+    const usernameEl = document.getElementById("username");
+    const passwordEl = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const clearTokenBtn = document.getElementById("clearTokenBtn");
+    const tokenStatusEl = document.getElementById("tokenStatus");
+    const loginResultEl = document.getElementById("loginResult");
+
+    const audioFileEl = document.getElementById("audioFile");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const stsResultEl = document.getElementById("stsResult");
+    const uploadResultEl = document.getElementById("uploadResult");
+
+    let token = localStorage.getItem("demo_jwt_token") || "";
+
+    function setTokenStatus() {
+      tokenStatusEl.textContent = token ? "已登录（Token 已保存）" : "未登录";
+    }
+
+    function getBaseUrl() {
+      return baseUrlEl.value.trim().replace(/\/+$/, "");
+    }
+
+    function pretty(obj) {
+      return typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+    }
+
+    async function apiRequest(path, method = "GET", body = null, extraHeaders = {}) {
+      const headers = { ...extraHeaders };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      if (body !== null && !headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
+
+      const res = await fetch(`${getBaseUrl()}${path}`, {
+        method,
+        headers,
+        body: body !== null ? JSON.stringify(body) : undefined
+      });
+
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = text;
+      }
+
+      if (!res.ok) {
+        throw new Error(pretty(data));
+      }
+      return data;
+    }
+
+    loginBtn.addEventListener("click", async () => {
+      try {
+        const data = await apiRequest("/login", "POST", {
+          username: usernameEl.value.trim(),
+          password: passwordEl.value
+        });
+
+        token = data.token || data.access_token || "";
+        localStorage.setItem("demo_jwt_token", token);
+        setTokenStatus();
+        loginResultEl.value = pretty(data);
+      } catch (err) {
+        loginResultEl.value = String(err);
+      }
+    });
+
+    clearTokenBtn.addEventListener("click", () => {
+      token = "";
+      localStorage.removeItem("demo_jwt_token");
+      setTokenStatus();
+      loginResultEl.value = "Token 已清除";
+    });
+
+    uploadBtn.addEventListener("click", async () => {
+      const file = audioFileEl.files[0];
+      if (!file) {
+        uploadResultEl.value = "请先选择音频文件";
+        return;
+      }
+      if (!token) {
+        uploadResultEl.value = "请先登录";
+        return;
+      }
+
+      try {
+        uploadResultEl.value = "正在申请 STS 临时凭证...";
+        const sts = await apiRequest("/oss/sts", "POST", {
+          original_name: file.name
+        });
+        stsResultEl.value = pretty(sts);
+
+        uploadResultEl.value = "已获取 STS，正在上传到 OSS...";
+
+        const client = new OSS({
+          region: sts.region,
+          accessKeyId: sts.accessKeyId,
+          accessKeySecret: sts.accessKeySecret,
+          stsToken: sts.securityToken,
+          bucket: sts.bucket,
+          endpoint: `https://${sts.endpoint}`
+        });
+
+        const putResult = await client.put(sts.objectKey, file);
+
+        const ossUrl = sts.baseUrl.replace(/\/+$/, "") + "/" + sts.objectKey;
+
+        uploadResultEl.value = "OSS 上传成功，正在通知 Gin 落库...";
+
+        const completeData = await apiRequest("/upload/complete", "POST", {
+          original_name: file.name,
+          object_key: sts.objectKey,
+          oss_url: ossUrl,
+          file_size: file.size
+        });
+
+        uploadResultEl.value = pretty({
+          message: "上传与任务创建完成",
+          sts: sts,
+          putResult: {
+            url: putResult.url,
+            name: putResult.name
+          },
+          completeData: completeData
+        });
+      } catch (err) {
+        uploadResultEl.value = String(err);
+      }
+    });
+
+    setTokenStatus();
+  </script>
+</body>
+</html>

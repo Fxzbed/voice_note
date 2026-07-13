@@ -20,7 +20,50 @@ func NewUploadHandler(uploadService *service.UploadService) *UploadHandler {
 	}
 }
 
-func (h *UploadHandler) UploadAudio(c *gin.Context) {
+// func (h *UploadHandler) UploadAudio(c *gin.Context) {
+// 	userIDValue, exists := c.Get("user_id")
+// 	if !exists {
+// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found in token"})
+// 		return
+// 	}
+// 	userID := userIDValue.(uint)
+
+// 	fileHeader, err := c.FormFile("file")
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+// 		return
+// 	}
+
+// 	if fileHeader.Size == 0 {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "empty file"})
+// 		return
+// 	}
+
+// 	task, err := h.UploadService.SaveUploadedFile(userID, fileHeader, func(dst string) error {
+// 		return c.SaveUploadedFile(fileHeader, dst)
+// 	})
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "save file failed"})
+// 		return
+// 	}
+
+//		c.JSON(http.StatusOK, gin.H{
+//			"message":     "upload success",
+//			"task_id":     task.ID,
+//			"status":      task.Status,
+//			"file_name":   task.OriginalName,
+//			"file_path":   task.FilePath,
+//			"stored_name": task.StoredName,
+//		})
+//	}
+func (h *UploadHandler) DeleteTask(c *gin.Context) {
+	idStr := c.Param("id")
+	taskID64, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid task id"})
+		return
+	}
+
 	userIDValue, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found in token"})
@@ -28,32 +71,19 @@ func (h *UploadHandler) UploadAudio(c *gin.Context) {
 	}
 	userID := userIDValue.(uint)
 
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
-		return
-	}
+	if err := h.UploadService.DeleteTask(uint(taskID64), userID); err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+			return
+		}
 
-	if fileHeader.Size == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "empty file"})
-		return
-	}
-
-	task, err := h.UploadService.SaveUploadedFile(userID, fileHeader, func(dst string) error {
-		return c.SaveUploadedFile(fileHeader, dst)
-	})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "save file failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":     "upload success",
-		"task_id":     task.ID,
-		"status":      task.Status,
-		"file_name":   task.OriginalName,
-		"file_path":   task.FilePath,
-		"stored_name": task.StoredName,
+		"message": "task deleted successfully",
+		"task_id": uint(taskID64),
 	})
 }
 
@@ -84,7 +114,6 @@ func (h *UploadHandler) GetTaskStatus(c *gin.Context) {
 		"file_size":     task.FileSize,
 		"status":        task.Status,
 		"status_text":   model.GetTaskStatusText(task.Status),
-		"error_message": task.ErrorMessage,
 		"created_at":    task.CreatedAt,
 	})
 }
@@ -111,7 +140,6 @@ func (h *UploadHandler) ListMyTasks(c *gin.Context) {
 			"file_size":     task.FileSize,
 			"status":        task.Status,
 			"status_text":   model.GetTaskStatusText(task.Status),
-			"error_message": task.ErrorMessage,
 			"created_at":    task.CreatedAt,
 			"updated_at":    task.UpdatedAt,
 		})

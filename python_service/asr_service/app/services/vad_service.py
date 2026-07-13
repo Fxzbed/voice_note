@@ -8,6 +8,7 @@ from typing import List
 
 from silero_vad import load_silero_vad, read_audio, get_speech_timestamps
 import torchaudio
+import torch
 
 
 @dataclass
@@ -40,10 +41,10 @@ class VADService:
         self.output_dir = output_dir
 
         os.makedirs(self.output_dir, exist_ok=True)
-
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # 串行化整个 VAD 流程，避免多线程并发触发底层库崩溃
         self._lock = threading.Lock()
-        self.model = load_silero_vad()
+        self.model = load_silero_vad().to(self.device)
 
     def split_audio(self, file_path: str, task_id: int) -> List[AudioSegment]:
         """
@@ -52,6 +53,7 @@ class VADService:
         """
         with self._lock:
             wav = read_audio(file_path, sampling_rate=self.sample_rate)
+            wav = wav.to(self.device)
 
             speech_timestamps = get_speech_timestamps(
                 wav,

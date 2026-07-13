@@ -39,11 +39,12 @@ func (r *UploadTaskRepository) FindByUserID(userID uint) ([]model.UploadTask, er
 	return tasks, err
 }
 
-func (r *UploadTaskRepository) UpdateStatus(id uint, status string, errMsg string) error {
+func (r *UploadTaskRepository) UpdateStatus(taskID uint, status string) error {
 	return r.DB.Model(&model.UploadTask{}).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"status":        status,
-			"error_message": errMsg,
-		}).Error
+		Where("id = ?", taskID).
+		Update("status", status).Error
+}
+
+func (r *UploadTaskRepository) DeleteByID(id uint) error {
+	return r.DB.Delete(&model.UploadTask{}, id).Error
 }

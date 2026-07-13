@@ -1,0 +1,24 @@
+# ===== 环境变量与密钥 =====
+.env
+.env.*
+!.env.example
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# ===== Go =====
+backend/voice-note-server
+*.exe
+
+# ===== IDE / 系统 =====
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+python_service/model/

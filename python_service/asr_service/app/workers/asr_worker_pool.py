@@ -6,7 +6,8 @@ import threading
 from app.core.task_pool import TaskPool
 from app.services.vad_service import VADService
 from app.services.asr_service import ASRService
-from app.services.note_service import NoteService
+from app.services.structured_note_service import StructuredNoteService
+from app.services.oss_download_service import OSSDownloadService
 from app.workers.asr_worker import ASRWorker
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,8 @@ class ASRWorkerPool:
         task_pool: TaskPool,
         vad_service: VADService,
         asr_service: ASRService,
-        note_service: NoteService,
+        structured_note_service: StructuredNoteService,
+        oss_download_service: OSSDownloadService,
         worker_count: int = 1,
         poll_interval: float = 1.0,
     ) -> None:
@@ -28,7 +30,8 @@ class ASRWorkerPool:
         self.task_pool = task_pool
         self.vad_service = vad_service
         self.asr_service = asr_service
-        self.note_service = note_service
+        self.structured_note_service = structured_note_service
+        self.oss_download_service = oss_download_service
         self.worker_count = worker_count
         self.poll_interval = poll_interval
 
@@ -50,7 +53,8 @@ class ASRWorkerPool:
                 task_pool=self.task_pool,
                 vad_service=self.vad_service,
                 asr_service=self.asr_service,
-                note_service=self.note_service,
+                structured_note_service=self.structured_note_service,
+                oss_download_service=self.oss_download_service,
                 poll_interval=self.poll_interval,
             )
 

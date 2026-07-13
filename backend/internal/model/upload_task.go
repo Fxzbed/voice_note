@@ -3,27 +3,40 @@ package model
 import "time"
 
 const (
-	TaskStatusUploaded       = "uploaded"        // 上传成功，未开始 ASR
-	TaskStatusASRProcessing  = "asr_processing"  // ASR 中
-	TaskStatusASRDone        = "asr_done"        // ASR 完成，未生成笔记
-	TaskStatusASRFailed      = "asr_failed"      // ASR 失败
-	TaskStatusNoteGenerating = "note_generating" // 笔记生成中
-	TaskStatusNoteDone       = "note_done"       // 笔记生成完成
-	TaskStatusNoteFailed     = "note_failed"     // 笔记生成失败
-	TaskStatusUploadFailed   = "upload_failed"   // 文件上传失败
+	TaskStatusUploaded  = "uploaded"
+	TaskStatusSubmitted = "submitted"
+
+	TaskStatusDownloadProcessing = "download_processing"
+	TaskStatusDownloadDone       = "download_done"
+	TaskStatusDownloadFailed     = "download_failed"
+
+	TaskStatusVADProcessing = "vad_processing"
+	TaskStatusVADDone       = "vad_done"
+	TaskStatusVADFailed     = "vad_failed"
+
+	TaskStatusASRProcessing = "asr_processing"
+	TaskStatusASRDone       = "asr_done"
+	TaskStatusASRFailed     = "asr_failed"
+
+	TaskStatusNoteGenerating = "note_generating"
+	TaskStatusNoteDone       = "note_done"
+	TaskStatusNoteFailed     = "note_failed"
 )
 
 type UploadTask struct {
 	ID           uint   `gorm:"primaryKey"`
 	UserID       uint   `gorm:"not null;index"`
-	OriginalName string `gorm:"type:varchar(255);not null"`
-	StoredName   string `gorm:"type:varchar(255);not null"`
-	FilePath     string `gorm:"type:varchar(500);not null"`
+	OriginalName string `gorm:"size:255;not null"`
+	StoredName   string `gorm:"size:255"`
+	FilePath     string `gorm:"size:500"`
 	FileSize     int64  `gorm:"not null"`
-	Status       string `gorm:"type:varchar(50);not null;default:'uploaded';index"`
-	ErrorMessage string `gorm:"type:text"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+
+	OSSObjectKey string `gorm:"size:500"`
+	OSSURL       string `gorm:"size:1000"`
+
+	Status    string `gorm:"size:50;not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func GetTaskStatusText(status string) string {
@@ -42,7 +55,7 @@ func GetTaskStatusText(status string) string {
 		return "笔记生成完成"
 	case TaskStatusNoteFailed:
 		return "笔记生成失败"
-	case TaskStatusUploadFailed:
+	case TaskStatusDownloadFailed:
 		return "文件上传失败"
 	default:
 		return "未知状态"
